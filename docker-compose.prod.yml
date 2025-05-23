@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      target: production
+    volumes:
+      - backend_data:/app/data
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - EVENTBRITE_API_KEY=${EVENTBRITE_API_KEY}
+      - EVENTBRITE_CLIENT_SECRET=${EVENTBRITE_CLIENT_SECRET}
+      - EVENTBRITE_PRIVATE_TOKEN=${EVENTBRITE_PRIVATE_TOKEN}
+      - EVENTBRITE_PUBLIC_TOKEN=${EVENTBRITE_PUBLIC_TOKEN}
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  backend_data:
+
+networks:
+  app-network:
+    driver: bridge 

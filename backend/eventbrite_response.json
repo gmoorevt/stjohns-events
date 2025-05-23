@@ -1,0 +1,378 @@
+{
+  "name": {
+    "text": "St. John's 2025 Summerfest",
+    "html": "St. John&#39;s 2025 Summerfest"
+  },
+  "description": {
+    "text": "Get ready to celebrate summer at St. John's 2025 Summerfest, starting on June 9th at 4 PM - it's going to be a blast!",
+    "html": "Get ready to celebrate summer at St. John's 2025 Summerfest, starting on June 9th at 4 PM - it's going to be a blast!"
+  },
+  "url": "https://www.eventbrite.com/e/st-johns-2025-summerfest-registration-1367969235809",
+  "vanity_url": "https://stjohnsumerfest.eventbrite.com",
+  "start": {
+    "timezone": "America/New_York",
+    "local": "2025-06-08T16:00:00",
+    "utc": "2025-06-08T20:00:00Z"
+  },
+  "end": {
+    "timezone": "America/New_York",
+    "local": "2025-06-09T19:00:00",
+    "utc": "2025-06-09T23:00:00Z"
+  },
+  "organization_id": "471021377029",
+  "created": "2025-05-15T20:50:25Z",
+  "changed": "2025-05-22T17:25:04Z",
+  "published": "2025-05-18T01:02:26Z",
+  "capacity": 250,
+  "capacity_is_custom": true,
+  "status": "live",
+  "currency": "USD",
+  "listed": true,
+  "shareable": true,
+  "invite_only": false,
+  "online_event": false,
+  "show_remaining": false,
+  "tx_time_limit": 1200,
+  "hide_start_date": false,
+  "hide_end_date": true,
+  "locale": "en_US",
+  "is_locked": false,
+  "privacy_setting": "unlocked",
+  "is_series": false,
+  "is_series_parent": false,
+  "inventory_type": "limited",
+  "is_reserved_seating": false,
+  "show_pick_a_seat": false,
+  "show_seatmap_thumbnail": false,
+  "show_colors_in_seatmap_thumbnail": false,
+  "source": "coyote",
+  "is_free": false,
+  "version": null,
+  "summary": "Get ready to celebrate summer at St. John's 2025 Summerfest, starting on June 9th at 4 PM - it's going to be a blast!",
+  "facebook_event_id": null,
+  "logo_id": "511138639",
+  "organizer_id": "65589312653",
+  "venue_id": "270468573",
+  "category_id": "113",
+  "subcategory_id": "13999",
+  "format_id": "11",
+  "id": "1367969235809",
+  "resource_uri": "https://www.eventbriteapi.com/v3/events/1367969235809/",
+  "is_externally_ticketed": false,
+  "logo": {
+    "crop_mask": {
+      "top_left": {
+        "x": 0,
+        "y": 504
+      },
+      "width": 4032,
+      "height": 2016
+    },
+    "original": {
+      "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F511138639%2F275743727573%2F1%2Foriginal.20230509-184901?auto=format%2Ccompress&q=75&sharp=10&s=b840a6ee4ca0ecb7e337947f084e6535",
+      "width": 4032,
+      "height": 3024
+    },
+    "id": "511138639",
+    "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F511138639%2F275743727573%2F1%2Foriginal.20230509-184901?h=200&w=450&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C504%2C4032%2C2016&s=696563d7b785cc1f2078d3588d4a3fde",
+    "aspect_ratio": "2",
+    "edge_color": "#5b5956",
+    "edge_color_set": true
+  },
+  "ticket_classes": [
+    {
+      "actual_cost": null,
+      "actual_fee": null,
+      "cost": null,
+      "fee": null,
+      "tax": null,
+      "resource_uri": "https://www.eventbriteapi.com/v3/events/1367969235809/ticket_classes/2443604353/",
+      "display_name": "Ticket for tracking attendance",
+      "name": "Ticket for tracking attendance",
+      "description": "Please select a ticket for each member in your party to ensure we have enough food and drink for everyone.",
+      "sorting": 1,
+      "donation": false,
+      "free": true,
+      "minimum_quantity": 1,
+      "maximum_quantity": 10,
+      "maximum_quantity_per_order": 10,
+      "on_sale_status": "AVAILABLE",
+      "has_pdf_ticket": true,
+      "order_confirmation_message": null,
+      "delivery_methods": [
+        "electronic"
+      ],
+      "category": "admission",
+      "sales_channels": [
+        "online",
+        "atd"
+      ],
+      "secondary_assignment_enabled": false,
+      "event_id": "1367969235809",
+      "image_id": null,
+      "id": "2443604353",
+      "capacity": 200,
+      "quantity_total": 200,
+      "quantity_sold": 12,
+      "sales_start": "2025-05-06T04:00:00Z",
+      "sales_end": "2025-06-08T19:18:00Z",
+      "sales_end_relative": null,
+      "hidden": false,
+      "hidden_currently": false,
+      "include_fee": false,
+      "split_fee": false,
+      "hide_description": true,
+      "hide_sale_dates": false,
+      "ticket_parent_id": null,
+      "auto_hide": false,
+      "payment_constraints": []
+    },
+    {
+      "actual_cost": null,
+      "actual_fee": null,
+      "cost": null,
+      "fee": null,
+      "tax": null,
+      "resource_uri": "https://www.eventbriteapi.com/v3/events/1367969235809/ticket_classes/2443604363/",
+      "display_name": "Donation - Please donate what you can.",
+      "name": "Donation - Please donate what you can.",
+      "description": null,
+      "sorting": 2,
+      "donation": true,
+      "free": false,
+      "minimum_quantity": 1,
+      "maximum_quantity": 1,
+      "maximum_quantity_per_order": 1,
+      "on_sale_status": "AVAILABLE",
+      "has_pdf_ticket": true,
+      "order_confirmation_message": null,
+      "delivery_methods": [
+        "electronic"
+      ],
+      "category": "donation",
+      "sales_channels": [
+        "online"
+      ],
+      "secondary_assignment_enabled": false,
+      "event_id": "1367969235809",
+      "image_id": null,
+      "id": "2443604363",
+      "capacity": null,
+      "quantity_total": 0,
+      "quantity_sold": 1,
+      "sales_start": "2025-05-06T04:00:00Z",
+      "sales_end": "2025-06-14T19:18:00Z",
+      "sales_end_relative": null,
+      "hidden": false,
+      "hidden_currently": false,
+      "include_fee": true,
+      "split_fee": false,
+      "hide_description": true,
+      "hide_sale_dates": false,
+      "ticket_parent_id": null,
+      "auto_hide": false,
+      "payment_constraints": []
+    },
+    {
+      "actual_cost": null,
+      "actual_fee": {
+        "display": "$8.39",
+        "currency": "USD",
+        "value": 839,
+        "major_value": "8.39"
+      },
+      "cost": {
+        "display": "$100.00",
+        "currency": "USD",
+        "value": 10000,
+        "major_value": "100.00"
+      },
+      "fee": {
+        "display": "$0.00",
+        "currency": "USD",
+        "value": 0,
+        "major_value": "0.00"
+      },
+      "tax": {
+        "display": "$0.00",
+        "currency": "USD",
+        "value": 0,
+        "major_value": "0.00"
+      },
+      "resource_uri": "https://www.eventbriteapi.com/v3/events/1367969235809/ticket_classes/2443604393/",
+      "display_name": "Donation - Myrrh",
+      "name": "Donation - Myrrh",
+      "description": null,
+      "sorting": 3,
+      "donation": false,
+      "free": false,
+      "minimum_quantity": 1,
+      "maximum_quantity": 10,
+      "maximum_quantity_per_order": 10,
+      "on_sale_status": "AVAILABLE",
+      "has_pdf_ticket": true,
+      "order_confirmation_message": null,
+      "delivery_methods": [
+        "electronic"
+      ],
+      "category": "admission",
+      "sales_channels": [
+        "online",
+        "atd"
+      ],
+      "secondary_assignment_enabled": false,
+      "event_id": "1367969235809",
+      "image_id": null,
+      "id": "2443604393",
+      "capacity": 200,
+      "quantity_total": 200,
+      "quantity_sold": 0,
+      "sales_start": "2025-05-15T04:00:00Z",
+      "sales_end": "2025-06-14T20:00:00Z",
+      "sales_end_relative": null,
+      "hidden": false,
+      "hidden_currently": false,
+      "include_fee": true,
+      "split_fee": false,
+      "hide_description": true,
+      "hide_sale_dates": false,
+      "ticket_parent_id": null,
+      "auto_hide": false,
+      "payment_constraints": []
+    },
+    {
+      "actual_cost": null,
+      "actual_fee": {
+        "display": "$18.29",
+        "currency": "USD",
+        "value": 1829,
+        "major_value": "18.29"
+      },
+      "cost": {
+        "display": "$250.00",
+        "currency": "USD",
+        "value": 25000,
+        "major_value": "250.00"
+      },
+      "fee": {
+        "display": "$0.00",
+        "currency": "USD",
+        "value": 0,
+        "major_value": "0.00"
+      },
+      "tax": {
+        "display": "$0.00",
+        "currency": "USD",
+        "value": 0,
+        "major_value": "0.00"
+      },
+      "resource_uri": "https://www.eventbriteapi.com/v3/events/1367969235809/ticket_classes/2443604383/",
+      "display_name": "Donation - Frankincense",
+      "name": "Donation - Frankincense",
+      "description": null,
+      "sorting": 4,
+      "donation": false,
+      "free": false,
+      "minimum_quantity": 1,
+      "maximum_quantity": 10,
+      "maximum_quantity_per_order": 10,
+      "on_sale_status": "AVAILABLE",
+      "has_pdf_ticket": true,
+      "order_confirmation_message": null,
+      "delivery_methods": [
+        "electronic"
+      ],
+      "category": "admission",
+      "sales_channels": [
+        "online",
+        "atd"
+      ],
+      "secondary_assignment_enabled": false,
+      "event_id": "1367969235809",
+      "image_id": null,
+      "id": "2443604383",
+      "capacity": 200,
+      "quantity_total": 200,
+      "quantity_sold": 2,
+      "sales_start": "2025-05-15T04:00:00Z",
+      "sales_end": "2025-06-14T20:00:00Z",
+      "sales_end_relative": null,
+      "hidden": false,
+      "hidden_currently": false,
+      "include_fee": true,
+      "split_fee": false,
+      "hide_description": true,
+      "hide_sale_dates": false,
+      "ticket_parent_id": null,
+      "auto_hide": false,
+      "payment_constraints": []
+    },
+    {
+      "actual_cost": null,
+      "actual_fee": {
+        "display": "$34.79",
+        "currency": "USD",
+        "value": 3479,
+        "major_value": "34.79"
+      },
+      "cost": {
+        "display": "$500.00",
+        "currency": "USD",
+        "value": 50000,
+        "major_value": "500.00"
+      },
+      "fee": {
+        "display": "$0.00",
+        "currency": "USD",
+        "value": 0,
+        "major_value": "0.00"
+      },
+      "tax": {
+        "display": "$0.00",
+        "currency": "USD",
+        "value": 0,
+        "major_value": "0.00"
+      },
+      "resource_uri": "https://www.eventbriteapi.com/v3/events/1367969235809/ticket_classes/2443604373/",
+      "display_name": "Donation - Gold",
+      "name": "Donation - Gold",
+      "description": null,
+      "sorting": 5,
+      "donation": false,
+      "free": false,
+      "minimum_quantity": 1,
+      "maximum_quantity": 10,
+      "maximum_quantity_per_order": 10,
+      "on_sale_status": "AVAILABLE",
+      "has_pdf_ticket": true,
+      "order_confirmation_message": null,
+      "delivery_methods": [
+        "electronic"
+      ],
+      "category": "admission",
+      "sales_channels": [
+        "online",
+        "atd"
+      ],
+      "secondary_assignment_enabled": false,
+      "event_id": "1367969235809",
+      "image_id": null,
+      "id": "2443604373",
+      "capacity": 200,
+      "quantity_total": 200,
+      "quantity_sold": 2,
+      "sales_start": "2025-05-15T04:00:00Z",
+      "sales_end": "2025-06-14T20:00:00Z",
+      "sales_end_relative": null,
+      "hidden": false,
+      "hidden_currently": false,
+      "include_fee": true,
+      "split_fee": false,
+      "hide_description": true,
+      "hide_sale_dates": false,
+      "ticket_parent_id": null,
+      "auto_hide": false,
+      "payment_constraints": []
+    }
+  ]
+}

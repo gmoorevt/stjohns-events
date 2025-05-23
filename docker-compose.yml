@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      target: development
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - EVENTBRITE_API_KEY=${EVENTBRITE_API_KEY}
+      - EVENTBRITE_CLIENT_SECRET=${EVENTBRITE_CLIENT_SECRET}
+      - EVENTBRITE_PRIVATE_TOKEN=${EVENTBRITE_PRIVATE_TOKEN}
+      - EVENTBRITE_PUBLIC_TOKEN=${EVENTBRITE_PUBLIC_TOKEN}
+      - EVENTBRITE_OAUTH_TOKEN=${EVENTBRITE_OAUTH_TOKEN}
+      - BACKEND_CORS_ORIGINS=http://localhost:5173,http://frontend:5173
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - NODE_ENV=development
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  backend_data:
+
+networks:
+  app-network:
+    driver: bridge 
