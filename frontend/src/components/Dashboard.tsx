@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from 'react-query';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 interface TicketType {
   name: string;
@@ -32,8 +32,22 @@ interface OrdersResponse {
   orders: Order[];
 }
 
+interface ApiError {
+  message: string;
+  response?: {
+    data?: any;
+    status?: number;
+    headers?: any;
+  };
+  config?: {
+    url?: string;
+    method?: string;
+    headers?: any;
+  };
+}
+
 export default function Dashboard() {
-  const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery<Metrics>(
+  const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery<Metrics, AxiosError>(
     'metrics',
     async () => {
       console.log('Fetching metrics from:', `${import.meta.env.VITE_API_URL}/api/metrics`);
@@ -42,24 +56,25 @@ export default function Dashboard() {
         console.log('API Response:', response.data);
         return response.data;
       } catch (err) {
+        const error = err as AxiosError;
         console.error('API Error details:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status,
-          headers: err.response?.headers,
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          headers: error.response?.headers,
           config: {
-            url: err.config?.url,
-            method: err.config?.method,
-            headers: err.config?.headers
+            url: error.config?.url,
+            method: error.config?.method,
+            headers: error.config?.headers
           }
         });
-        throw err;
+        throw error;
       }
     },
     {
       refetchInterval: 30000, // Refetch every 30 seconds
-      onError: (error) => {
-        console.error('Query error:', error);
+      onError: (error: AxiosError) => {
+        console.error('Query error:', error.message);
       },
       onSuccess: (data) => {
         console.log('Query success:', data);
@@ -67,15 +82,16 @@ export default function Dashboard() {
     }
   );
 
-  const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery<OrdersResponse>(
+  const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery<OrdersResponse, AxiosError>(
     'orders',
     async () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/orders`);
         return response.data;
       } catch (err) {
-        console.error('Orders API Error:', err);
-        throw err;
+        const error = err as AxiosError;
+        console.error('Orders API Error:', error.message);
+        throw error;
       }
     },
     {
@@ -114,12 +130,13 @@ export default function Dashboard() {
   }
 
   if (metricsError || ordersError) {
-    console.error('Dashboard error:', metricsError || ordersError);
+    const error = (metricsError || ordersError) as AxiosError;
+    console.error('Dashboard error:', error.message);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-red-600">
           <p className="text-xl font-semibold mb-2">Error loading dashboard data</p>
-          <p className="text-sm">{(metricsError || ordersError)?.message || 'Unknown error occurred'}</p>
+          <p className="text-sm">{error.message || 'Unknown error occurred'}</p>
         </div>
       </div>
     );

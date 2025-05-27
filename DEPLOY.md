@@ -45,15 +45,48 @@ This guide provides step-by-step instructions for deploying the Summerfest Dashb
    su - summerfest
    ```
 
+5. Set up proper permissions:
+   ```bash
+   # Create application directory and set ownership
+   sudo mkdir -p /home/summerfest/stjohns-events
+   sudo chown -R summerfest:summerfest /home/summerfest/stjohns-events
+   
+   # Set up proper permissions for Docker socket
+   sudo usermod -aG docker summerfest
+   
+   # Create and set permissions for data directories
+   sudo mkdir -p /home/summerfest/stjohns-events/backend/data
+   sudo mkdir -p /home/summerfest/backups
+   sudo chown -R summerfest:summerfest /home/summerfest/stjohns-events/backend/data
+   sudo chown -R summerfest:summerfest /home/summerfest/backups
+   
+   # Set proper permissions for the application directory
+   sudo chmod 755 /home/summerfest/stjohns-events
+   sudo chmod 755 /home/summerfest/backups
+   ```
+
 ### 3. Deploy the Application
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/summerfest.git
-   cd summerfest
+   cd /home/summerfest/stjohns-events
+   git clone https://github.com/your-username/stjohns-events.git .
    ```
+   Note: The dot at the end of the git clone command ensures we clone into the current directory rather than creating a subdirectory.
 
 2. Create the production environment files:
+
+   Root `.env` (for Docker Compose):
+   ```bash
+   # Create root .env
+   cat > .env << EOL
+   EVENTBRITE_API_KEY=your_api_key
+   EVENTBRITE_OAUTH_TOKEN=your_oauth_token
+   EVENTBRITE_CLIENT_SECRET=your_client_secret
+   EVENTBRITE_PUBLIC_TOKEN=your_public_token
+   EVENTBRITE_PRIVATE_TOKEN=your_private_token
+   EOL
+   ```
 
    Backend `.env`:
    ```bash
@@ -62,6 +95,9 @@ This guide provides step-by-step instructions for deploying the Summerfest Dashb
    ENVIRONMENT=production
    EVENTBRITE_API_KEY=your_api_key
    EVENTBRITE_OAUTH_TOKEN=your_oauth_token
+   EVENTBRITE_CLIENT_SECRET=your_client_secret
+   EVENTBRITE_PUBLIC_TOKEN=your_public_token
+   EVENTBRITE_PRIVATE_TOKEN=your_private_token
    EVENTBRITE_ORG_ID=your_org_id
    BACKEND_CORS_ORIGINS=https://your-domain.com
    EOL
@@ -76,6 +112,8 @@ This guide provides step-by-step instructions for deploying the Summerfest Dashb
    EOL
    ```
 
+   Note: The root `.env` file is used by Docker Compose to pass environment variables to the services, while the backend `.env` file is mounted directly into the backend container. Both files should contain the same credentials for consistency.
+
 3. Build and start the containers:
    ```bash
    docker compose -f docker-compose.prod.yml up -d --build
@@ -88,12 +126,59 @@ This guide provides step-by-step instructions for deploying the Summerfest Dashb
    sudo apt install -y nginx
    ```
 
-2. Create Nginx configuration:
+2. Configure Cloudflare DNS Records:
+   
+   Log in to your Cloudflare dashboard and add the following DNS records:
+
+   ```
+   # Main domain (Frontend)
+   Type: A
+   Name: @ (or your-domain.com)
+   Content: [Your Server IP]
+   Proxy status: Proxied (Orange cloud)
+   TTL: Auto
+
+   # API subdomain
+   Type: A
+   Name: api
+   Content: [Your Server IP]
+   Proxy status: Proxied (Orange cloud)
+   TTL: Auto
+   ```
+
+   Additional Cloudflare Settings:
+   1. SSL/TLS:
+      - Set SSL/TLS encryption mode to "Full (strict)"
+      - Enable "Always Use HTTPS"
+      - Enable "Automatic HTTPS Rewrites"
+
+   2. Page Rules (Optional but recommended):
+      ```
+      # Force HTTPS for main domain
+      URL: your-domain.com/*
+      Settings: Always Use HTTPS
+
+      # Force HTTPS for API
+      URL: api.your-domain.com/*
+      Settings: Always Use HTTPS
+      ```
+
+   3. Security Settings:
+      - Set Security Level to "Medium"
+      - Enable "Bot Fight Mode"
+      - Enable "Challenge Passage" (if needed)
+
+   4. Caching:
+      - Set Cache Level to "Standard"
+      - Enable "Auto Minify" for HTML, CSS, and JavaScript
+      - Enable "Brotli" compression
+
+3. Create Nginx configuration:
    ```bash
    sudo nano /etc/nginx/sites-available/summerfest
    ```
 
-3. Add the following configuration:
+4. Add the following configuration:
    ```nginx
    # Frontend
    server {
@@ -126,7 +211,7 @@ This guide provides step-by-step instructions for deploying the Summerfest Dashb
    }
    ```
 
-4. Enable the site and restart Nginx:
+5. Enable the site and restart Nginx:
    ```bash
    sudo ln -s /etc/nginx/sites-available/summerfest /etc/nginx/sites-enabled/
    sudo nginx -t
@@ -192,14 +277,37 @@ This guide provides step-by-step instructions for deploying the Summerfest Dashb
    - Check container logs: `docker compose -f docker-compose.prod.yml logs`
    - Verify Nginx configuration: `sudo nginx -t`
    - Check firewall settings: `sudo ufw status`
+   - Verify environment variables are set in both root and backend `.env` files
+   - Check user permissions: `ls -la /home/summerfest/stjohns-events`
+   - Verify Cloudflare DNS settings and proxy status
+   - Check Cloudflare SSL/TLS settings
+   - Test direct IP access (bypassing Cloudflare) to isolate DNS issues
 
-2. **Database issues**
+2. **SSL/HTTPS Issues**
+   - Verify Cloudflare SSL/TLS mode is set to "Full (strict)"
+   - Check if SSL certificates are properly installed
+   - Verify Cloudflare proxy status (orange cloud) is enabled
+   - Check for mixed content warnings in browser console
+   - Verify API endpoints are using HTTPS
+
+3. **Permission issues**
+   - Verify summerfest user is in docker group: `groups summerfest`
+   - Check directory permissions: `ls -la /home/summerfest/stjohns-events`
+   - Ensure data directory is writable: `ls -la /home/summerfest/stjohns-events/backend/data`
+   - Check backup directory permissions: `ls -la /home/summerfest/backups`
+
+4. **Database issues**
    - Verify database volume: `docker volume ls`
    - Check database file permissions
    - Restore from backup if needed
 
-3. **API connection issues**
-   - Verify environment variables
+5. **API connection issues**
+   - Verify all Eventbrite credentials are set in both root and backend `.env` files
+   - Check Eventbrite API credentials are valid using the test script:
+     ```bash
+     cd backend
+     python test_credentials.py
+     ```
    - Check CORS settings
    - Test API endpoint directly: `curl https://api.your-domain.com/api/metrics`
 
@@ -230,4 +338,4 @@ If you encounter any issues during deployment, please:
 1. Check the logs for error messages
 2. Verify all environment variables are set correctly
 3. Ensure all ports are properly configured
-4. Contact the development team with specific error messages and logs 
+4. Contact the development team with specific error messages and logs

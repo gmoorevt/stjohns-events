@@ -47,3 +47,12 @@ docker-compose.override.yml
 # Logs
 *.log
 logs/ setup.sh
+
+# Temporary files
+root@*
+
+# Keep deployment scripts
+!deploy.sh
+!post-deploy.sh
+!transfer-scripts.sh
+
