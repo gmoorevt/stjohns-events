@@ -5,6 +5,7 @@ services:
     build:
       context: ./backend
       target: production
+    container_name: summerfest-backend
     volumes:
       - backend_data:/app/data
     ports:
@@ -20,11 +21,12 @@ services:
       - app-network
 
   frontend:
+    container_name: summerfest-frontend
     build:
       context: ./frontend
       target: production
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       - backend
     restart: unless-stopped
