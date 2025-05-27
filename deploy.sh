@@ -203,11 +203,6 @@ VITE_API_URL=https://${API_DOMAIN}
 NODE_ENV=production
 EOL
 
-# Set proper permissions
-print_status "Setting proper permissions..."
-chown -R summerfest:summerfest $APP_DIR
-chmod 755 $APP_DIR
-
 # Create post-deploy script
 print_status "Creating post-deploy script..."
 cat > $APP_DIR/post-deploy.sh << 'EOL'
@@ -295,8 +290,29 @@ main() {
 main
 EOL
 
-# Make scripts executable
-chmod +x $APP_DIR/post-deploy.sh
+# Set proper permissions for all files
+print_status "Setting proper permissions..."
+chown -R summerfest:summerfest $APP_DIR
+chmod 755 $APP_DIR
+chmod 755 $APP_DIR/post-deploy.sh
+chmod 755 $APP_DIR/docker-compose.prod.yml
+chmod 644 $APP_DIR/.env.template
+
+# Verify the post-deploy script exists and is executable
+if [ ! -f "$APP_DIR/post-deploy.sh" ]; then
+    print_error "post-deploy.sh was not created properly"
+    exit 1
+fi
+
+if [ ! -x "$APP_DIR/post-deploy.sh" ]; then
+    print_error "post-deploy.sh is not executable"
+    exit 1
+fi
+
+print_status "Verifying file permissions..."
+ls -l $APP_DIR/post-deploy.sh
+ls -l $APP_DIR/docker-compose.prod.yml
+ls -l $APP_DIR/.env.template
 
 print_status "Initial setup complete!"
 echo
