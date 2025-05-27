@@ -195,7 +195,7 @@ EVENTBRITE_PRIVATE_TOKEN=your_private_token_here
 EVENTBRITE_PUBLIC_TOKEN=your_public_token_here
 
 # Backend Environment Variables
-BACKEND_CORS_ORIGINS=https://${MAIN_DOMAIN}
+BACKEND_CORS_ORIGINS=http://localhost:5173,http://frontend:5173,https://${MAIN_DOMAIN}
 ENVIRONMENT=production
 
 # Frontend Environment Variables
