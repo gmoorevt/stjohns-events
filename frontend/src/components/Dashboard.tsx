@@ -32,20 +32,6 @@ interface OrdersResponse {
   orders: Order[];
 }
 
-interface ApiError {
-  message: string;
-  response?: {
-    data?: any;
-    status?: number;
-    headers?: any;
-  };
-  config?: {
-    url?: string;
-    method?: string;
-    headers?: any;
-  };
-}
-
 export default function Dashboard() {
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery<Metrics, AxiosError>(
     'metrics',
