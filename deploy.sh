@@ -5,19 +5,19 @@ set -e
 
 # Function to print status messages
 print_status() {
-    echo -e "\n\033[1;34m==>\033[0m $1"
+    echo -e "\n\033[1;34m==>\033[0m \033[1m$1\033[0m"
 }
 
 # Function to print error messages
 print_error() {
-    echo -e "\n\033[1;31mError:\033[0m $1"
-    exit 1
+    echo -e "\n\033[1;31m==>\033[0m \033[1mError: $1\033[0m"
 }
 
 # Function to check if running as root
 check_root() {
     if [ "$EUID" -ne 0 ]; then
         print_error "This script must be run as root"
+        exit 1
     fi
 }
 
@@ -76,41 +76,55 @@ install_nginx() {
         apt install -y nginx
         
         # Create Nginx configuration
-        cat > /etc/nginx/sites-available/summerfest << 'EOL'
+        cat > /tmp/summerfest << EOL
 # Frontend
 server {
     listen 80;
-    server_name your-domain.com;
+    server_name \$DOMAIN_NAME;
 
     location / {
-        proxy_pass http://localhost:80;
+        proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 
 # Backend API
 server {
     listen 80;
-    server_name api.your-domain.com;
+    server_name api.\$DOMAIN_NAME;
 
     location / {
         proxy_pass http://localhost:8000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 EOL
 
-        # Enable the site
-        ln -sf /etc/nginx/sites-available/summerfest /etc/nginx/sites-enabled/
-        nginx -t && systemctl restart nginx
+        # Move configuration to Nginx sites-available
+        sudo mv /tmp/summerfest /etc/nginx/sites-available/summerfest
+
+        # Create symbolic link if it doesn't exist
+        if [ ! -L /etc/nginx/sites-enabled/summerfest ]; then
+            sudo ln -s /etc/nginx/sites-available/summerfest /etc/nginx/sites-enabled/
+        fi
+
+        # Test Nginx configuration
+        if ! sudo nginx -t; then
+            print_error "Nginx configuration test failed"
+            exit 1
+        fi
+
+        # Reload Nginx
+        sudo systemctl reload nginx
+        print_status "Nginx configuration updated successfully"
     else
         print_status "Nginx is already installed"
     fi
@@ -158,14 +172,12 @@ configure_firewall() {
 setup_post_deploy_script() {
     print_status "Setting up post-deploy script..."
     
-    # Copy the script to summerfest's home directory
-    cp "$(dirname "$0")/post-deploy.sh" /home/summerfest/
+    # Copy post-deploy.sh to summerfest user's home directory
+    cp post-deploy.sh /home/summerfest/
+    sudo chown summerfest:summerfest /home/summerfest/post-deploy.sh
+    sudo chmod +x /home/summerfest/post-deploy.sh
     
-    # Set ownership and permissions
-    chown summerfest:summerfest /home/summerfest/post-deploy.sh
-    chmod +x /home/summerfest/post-deploy.sh
-    
-    print_status "Post-deploy script has been copied to /home/summerfest/post-deploy.sh"
+    print_status "Post-deploy script setup complete"
 }
 
 # Main deployment function
@@ -193,13 +205,13 @@ deploy() {
     # Set up post-deploy script
     setup_post_deploy_script
     
-    print_status "Basic server setup complete!"
-    print_status "Next steps:"
-    echo "1. Update the Nginx configuration with your domain names"
-    echo "2. Run certbot to set up SSL: sudo certbot --nginx -d your-domain.com -d api.your-domain.com"
-    echo "3. Switch to summerfest user: su - summerfest"
-    echo "4. Run the post-deploy script: ./post-deploy.sh"
-    echo "5. Monitor the logs: docker compose -f docker-compose.prod.yml logs -f"
+    print_status "Deployment completed successfully!"
+    echo -e "\nNext steps:"
+    echo "1. Switch to summerfest user: su - summerfest"
+    echo "2. Run the post-deploy script: ./post-deploy.sh"
+    echo "3. Update your domain name in /etc/nginx/sites-available/summerfest"
+    echo "4. Run 'sudo nginx -t' to test the configuration"
+    echo "5. Run 'sudo systemctl reload nginx' to apply changes"
 }
 
 # Run the deployment

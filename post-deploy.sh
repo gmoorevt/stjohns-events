@@ -5,19 +5,19 @@ set -e
 
 # Function to print status messages
 print_status() {
-    echo -e "\n\033[1;34m==>\033[0m $1"
+    echo -e "\n\033[1;34m==>\033[0m \033[1m$1\033[0m"
 }
 
 # Function to print error messages
 print_error() {
-    echo -e "\n\033[1;31mError:\033[0m $1"
-    exit 1
+    echo -e "\n\033[1;31m==>\033[0m \033[1mError: $1\033[0m"
 }
 
 # Function to check if running as summerfest user
 check_user() {
-    if [ "$(whoami)" != "summerfest" ]; then
+    if [ "$USER" != "summerfest" ]; then
         print_error "This script must be run as the summerfest user"
+        exit 1
     fi
 }
 
@@ -248,6 +248,84 @@ verify_deployment() {
     print_status "Deployment verification complete!"
 }
 
+# Function to verify Nginx configuration
+verify_nginx_config() {
+    print_status "Verifying Nginx configuration..."
+    
+    # Check if Nginx is installed
+    if ! command -v nginx &> /dev/null; then
+        print_error "Nginx is not installed"
+        exit 1
+    fi
+
+    # Check if our configuration exists
+    if [ ! -f /etc/nginx/sites-available/summerfest ]; then
+        print_error "Nginx configuration not found"
+        exit 1
+    fi
+
+    # Verify the frontend proxy_pass is set to port 3000
+    if ! grep -q "proxy_pass http://localhost:3000" /etc/nginx/sites-available/summerfest; then
+        print_error "Nginx configuration has incorrect frontend proxy_pass port"
+        echo "Please ensure the frontend proxy_pass is set to port 3000"
+        exit 1
+    fi
+
+    # Test Nginx configuration
+    if ! sudo nginx -t; then
+        print_error "Nginx configuration test failed"
+        exit 1
+    fi
+
+    print_status "Nginx configuration verified successfully"
+}
+
+# Function to verify Docker setup
+verify_docker_setup() {
+    print_status "Verifying Docker setup..."
+    
+    # Check if Docker is installed and running
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker is not installed"
+        exit 1
+    fi
+
+    if ! docker info &> /dev/null; then
+        print_error "Docker is not running"
+        exit 1
+    fi
+
+    # Check if user is in docker group
+    if ! groups | grep -q docker; then
+        print_error "User is not in docker group"
+        echo "Please run: sudo usermod -aG docker summerfest"
+        exit 1
+    fi
+
+    print_status "Docker setup verified successfully"
+}
+
+# Function to verify port availability
+verify_ports() {
+    print_status "Verifying port availability..."
+    
+    # Check if port 3000 is available
+    if netstat -tuln | grep -q ":3000 "; then
+        print_error "Port 3000 is already in use"
+        echo "Please ensure no other service is using port 3000"
+        exit 1
+    fi
+
+    # Check if port 8000 is available
+    if netstat -tuln | grep -q ":8000 "; then
+        print_error "Port 8000 is already in use"
+        echo "Please ensure no other service is using port 8000"
+        exit 1
+    fi
+
+    print_status "Ports verified successfully"
+}
+
 # Main deployment function
 deploy() {
     print_status "Starting post-deployment setup..."
@@ -276,6 +354,15 @@ deploy() {
     
     # Verify deployment
     verify_deployment
+    
+    # Verify Nginx configuration
+    verify_nginx_config
+
+    # Verify Docker setup
+    verify_docker_setup
+
+    # Verify ports
+    verify_ports
     
     print_status "Post-deployment setup complete!"
     print_status "Next steps:"
