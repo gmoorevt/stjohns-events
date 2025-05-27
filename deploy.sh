@@ -18,17 +18,43 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Check required commands
-check_command() {
-    if ! command -v $1 &> /dev/null; then
-        print_error "$1 is required but not installed. Please install it first."
-        exit 1
+# Function to install Docker if not present
+install_docker() {
+    if ! command -v docker &> /dev/null; then
+        print_status "Installing Docker..."
+        apt update
+        apt install -y docker.io docker-compose
+        systemctl start docker
+        systemctl enable docker
+        print_status "Docker installed successfully"
+    else
+        print_status "Docker is already installed"
     fi
 }
 
-check_command docker
-check_command docker-compose
-check_command nginx
+# Function to install Nginx if not present
+install_nginx() {
+    if ! command -v nginx &> /dev/null; then
+        print_status "Installing Nginx..."
+        apt install -y nginx
+        systemctl start nginx
+        systemctl enable nginx
+        print_status "Nginx installed successfully"
+    else
+        print_status "Nginx is already installed"
+    fi
+}
+
+# Install required packages
+print_status "Checking and installing required packages..."
+install_docker
+install_nginx
+
+# Verify installations
+print_status "Verifying installations..."
+docker --version
+docker-compose --version
+nginx -v
 
 # Create summerfest user if it doesn't exist
 if ! id "summerfest" &>/dev/null; then
