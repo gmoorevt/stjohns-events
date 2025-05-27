@@ -12,11 +12,32 @@ print_error() {
     echo "ERROR: $1" >&2
 }
 
+# Function to get domain names
+get_domain_names() {
+    echo
+    echo "Please enter your domain names:"
+    read -p "Main domain (e.g., summerfest.com): " MAIN_DOMAIN
+    read -p "API subdomain (e.g., api.summerfest.com): " API_DOMAIN
+    
+    # Validate domain names
+    if [[ -z "$MAIN_DOMAIN" || -z "$API_DOMAIN" ]]; then
+        print_error "Domain names cannot be empty"
+        exit 1
+    fi
+    
+    # Export for use in other functions
+    export MAIN_DOMAIN
+    export API_DOMAIN
+}
+
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     print_error "Please run as root"
     exit 1
 fi
+
+# Get domain names before proceeding
+get_domain_names
 
 # Function to install Docker if not present
 install_docker() {
@@ -78,34 +99,34 @@ chown -R summerfest:summerfest /home/summerfest/backups
 
 # Set up Nginx configuration
 print_status "Setting up Nginx configuration..."
-cat > /etc/nginx/sites-available/summerfest << 'EOL'
+cat > /etc/nginx/sites-available/summerfest << EOL
 # Frontend
 server {
     listen 80;
-    server_name your-domain.com;  # Replace with your actual domain
+    server_name ${MAIN_DOMAIN};
 
     location / {
         proxy_pass http://localhost:3000;  # Frontend container
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 
 # Backend API
 server {
     listen 80;
-    server_name api.your-domain.com;  # Replace with your actual API domain
+    server_name ${API_DOMAIN};
 
     location / {
         proxy_pass http://localhost:8000;  # Backend container
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 EOL
@@ -164,9 +185,9 @@ networks:
     driver: bridge
 EOL
 
-# Create .env file template
+# Create .env file template with correct domains
 print_status "Creating .env file template..."
-cat > $APP_DIR/.env.template << 'EOL'
+cat > $APP_DIR/.env.template << EOL
 # Eventbrite API Credentials
 EVENTBRITE_API_KEY=your_api_key_here
 EVENTBRITE_CLIENT_SECRET=your_client_secret_here
@@ -174,11 +195,11 @@ EVENTBRITE_PRIVATE_TOKEN=your_private_token_here
 EVENTBRITE_PUBLIC_TOKEN=your_public_token_here
 
 # Backend Environment Variables
-BACKEND_CORS_ORIGINS=https://your-domain.com
+BACKEND_CORS_ORIGINS=https://${MAIN_DOMAIN}
 ENVIRONMENT=production
 
 # Frontend Environment Variables
-VITE_API_URL=https://api.your-domain.com
+VITE_API_URL=https://${API_DOMAIN}
 NODE_ENV=production
 EOL
 
@@ -279,8 +300,14 @@ chmod +x $APP_DIR/post-deploy.sh
 
 print_status "Initial setup complete!"
 echo
+echo "Domain configuration:"
+echo "Main domain: ${MAIN_DOMAIN}"
+echo "API domain: ${API_DOMAIN}"
+echo
 echo "Next steps:"
-echo "1. Edit /etc/nginx/sites-available/summerfest and replace 'your-domain.com' with your actual domain"
+echo "1. Ensure your DNS records are configured to point to this server:"
+echo "   - ${MAIN_DOMAIN} -> Your server IP"
+echo "   - ${API_DOMAIN} -> Your server IP"
 echo "2. Switch to summerfest user: su - summerfest"
 echo "3. Clone your repository: git clone <your-repo-url> /home/summerfest/stjohns-events"
 echo "4. Run the post-deploy script: ./post-deploy.sh"
