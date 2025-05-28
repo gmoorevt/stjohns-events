@@ -38,6 +38,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Health check endpoint
+@app.get("/api/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "version": "1.0.0",
+        "api_status": "operational"
+    }
+
 # Models
 class EventMetrics(BaseModel):
     total_gross: float
