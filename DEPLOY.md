@@ -38,8 +38,8 @@ This guide provides a streamlined process for deploying the Summerfest Dashboard
    This script will:
    - Create the `summerfest` user
    - Set up the application directory
-   - Configure Nginx
-   - Create necessary configuration files
+   - Configure Nginx for both frontend and backend
+   - Create necessary configuration files including the frontend Nginx proxy configuration
    - Set up proper permissions
 
 ### 2. Configure Domain and Environment
@@ -76,6 +76,8 @@ This guide provides a streamlined process for deploying the Summerfest Dashboard
    - `EVENTBRITE_OAUTH_TOKEN`
    - `EVENTBRITE_ORG_ID`
 
+   Note: The frontend container is configured to use `/api` as the API URL base path, which is automatically proxied to the backend service.
+
 ### 3. Deploy the Application
 
 1. Run the post-deploy script:
@@ -89,6 +91,8 @@ This guide provides a streamlined process for deploying the Summerfest Dashboard
    - Start Nginx
    - Start the application
    - Verify the services are running
+   - Test the Nginx configuration in the frontend container
+   - Verify the API proxy is working correctly
 
 ### 4. Set Up SSL (Optional but Recommended)
 
@@ -116,7 +120,28 @@ This guide provides a streamlined process for deploying the Summerfest Dashboard
 
 3. Test the application:
    - Visit `https://your-domain.com` in your browser
-   - Test the API at `https://api.your-domain.com/api/health`
+   - Test the API at `https://your-domain.com/api/health`
+   - Verify that the frontend can communicate with the backend through the API proxy
+
+## Architecture Overview
+
+The application is deployed using Docker containers with the following setup:
+
+1. Frontend Container:
+   - Serves the React application
+   - Uses Nginx to serve static files
+   - Includes a proxy configuration to forward `/api/*` requests to the backend
+   - Environment variable `VITE_API_URL=/api` ensures consistent API URL usage
+
+2. Backend Container:
+   - Runs the FastAPI application
+   - Handles API requests forwarded from the frontend
+   - Stores data in a persistent volume
+
+3. Nginx Proxy:
+   - Routes external requests to the appropriate container
+   - Handles SSL termination (when configured)
+   - Provides additional security headers
 
 ## Troubleshooting
 
@@ -138,6 +163,11 @@ This guide provides a streamlined process for deploying the Summerfest Dashboard
    - Test direct IP access
    - Check Cloudflare settings (if using)
 
+4. **API requests failing**
+   - Verify frontend Nginx configuration: `docker exec summerfest-frontend cat /etc/nginx/conf.d/default.conf`
+   - Check if backend is accessible: `docker exec summerfest-frontend curl http://backend:8000/api/health`
+   - Verify network connectivity: `docker network inspect stjohns-events_app-network`
+
 ### Useful Commands
 
 ```bash
@@ -145,8 +175,8 @@ This guide provides a streamlined process for deploying the Summerfest Dashboard
 docker-compose -f docker-compose.prod.yml logs -f
 
 # Restart the application
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.prod.yml down -v
+docker-compose -f docker-compose.prod.yml up -d --build
 
 # Restart Nginx
 sudo systemctl restart nginx
@@ -156,6 +186,9 @@ docker ps
 
 # View Nginx configuration
 sudo nginx -T
+
+# Test API proxy
+curl http://localhost:3000/api/health
 ```
 
 ## Maintenance
@@ -170,7 +203,7 @@ sudo nginx -T
 
 2. Rebuild and restart:
    ```bash
-   docker-compose -f docker-compose.prod.yml down
+   docker-compose -f docker-compose.prod.yml down -v
    docker-compose -f docker-compose.prod.yml up -d --build
    ```
 
@@ -201,3 +234,5 @@ sudo nginx -T
 4. Keep your Eventbrite API credentials secure
 5. Regularly rotate API credentials
 6. Monitor system resources and logs
+7. Ensure Nginx security headers are properly configured
+8. Keep Docker and containers updated

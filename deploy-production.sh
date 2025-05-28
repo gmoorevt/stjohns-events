@@ -239,22 +239,42 @@ clone_repository() {
     print_status "Cloning repository..."
     cd /home/summerfest/stjohns-events
     
-    # Remove any existing files except .env files
-    if [ -d .git ]; then
-        print_status "Repository exists, pulling latest changes..."
-        git pull
-    else
-        # Backup any existing .env files
-        if [ -f .env ]; then
-            mv .env .env.backup
-        fi
-        rm -rf *
-        if [ -f .env.backup ]; then
-            mv .env.backup .env
-        fi
-        
-        # Clone the repository
-        git clone https://github.com/gmoorevt/stjohns-events.git .
+    # Backup any existing .env files
+    if [ -f .env ]; then
+        print_status "Backing up existing .env file..."
+        mv .env .env.backup
+    fi
+    if [ -f backend/.env ]; then
+        print_status "Backing up existing backend/.env file..."
+        mv backend/.env backend/.env.backup
+    fi
+    if [ -f frontend/.env ]; then
+        print_status "Backing up existing frontend/.env file..."
+        mv frontend/.env frontend/.env.backup
+    fi
+    
+    # Remove existing files except backups
+    print_status "Cleaning up existing files..."
+    find . -mindepth 1 -not -name "*.backup" -not -name ".*" -exec rm -rf {} +
+    
+    # Clone the repository
+    print_status "Cloning fresh copy of repository..."
+    git clone https://github.com/gmoorevt/stjohns-events.git temp_repo
+    mv temp_repo/* temp_repo/.* .
+    rm -rf temp_repo
+    
+    # Restore .env files if they exist
+    if [ -f .env.backup ]; then
+        print_status "Restoring .env file..."
+        mv .env.backup .env
+    fi
+    if [ -f backend/.env.backup ]; then
+        print_status "Restoring backend/.env file..."
+        mv backend/.env.backup backend/.env
+    fi
+    if [ -f frontend/.env.backup ]; then
+        print_status "Restoring frontend/.env file..."
+        mv frontend/.env.backup frontend/.env
     fi
     
     # Set proper ownership

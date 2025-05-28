@@ -47,6 +47,9 @@ RUN npm config set fetch-retry-mintimeout 20000 \
 # Set Node.js memory limit
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
+# Set production environment variables
+ENV VITE_API_URL=/api
+
 # Install dependencies with specific flags
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
