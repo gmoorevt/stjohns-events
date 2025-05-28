@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from 'react-query';
 import axios, { AxiosError } from 'axios';
+import { getApiUrl } from '../utils/api';
 
 interface TicketType {
   name: string;
@@ -36,9 +37,10 @@ export default function Dashboard() {
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery<Metrics, AxiosError>(
     'metrics',
     async () => {
-      console.log('Fetching metrics from:', `${import.meta.env.VITE_API_URL}/api/metrics`);
+      const url = getApiUrl('/metrics');
+      console.log('Fetching metrics from:', url);
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/metrics`);
+        const response = await axios.get(url);
         console.log('API Response:', response.data);
         return response.data;
       } catch (err) {
@@ -72,7 +74,7 @@ export default function Dashboard() {
     'orders',
     async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/orders`);
+        const response = await axios.get(getApiUrl('/orders'));
         return response.data;
       } catch (err) {
         const error = err as AxiosError;

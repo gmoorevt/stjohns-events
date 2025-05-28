@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
+import { getApiUrl } from '../utils/api';
 
 export default function Admin() {
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery('goal', async () => {
-    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/goal`);
+    const res = await axios.get(getApiUrl('/goal'));
     return res.data.goal;
   });
 
@@ -18,7 +19,7 @@ export default function Admin() {
   }, [data]);
 
   const mutation = useMutation(
-    (newGoal: number) => axios.post(`${import.meta.env.VITE_API_URL}/api/goal`, { goal: newGoal }),
+    (newGoal: number) => axios.post(getApiUrl('/goal'), { goal: newGoal }),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('goal');
@@ -37,7 +38,7 @@ export default function Admin() {
     setIsDownloading(true);
     setDownloadError(null);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/eventbrite-raw`);
+      const response = await axios.get(getApiUrl('/eventbrite-raw'));
       const data = response.data;
       
       // Create a blob and download link
