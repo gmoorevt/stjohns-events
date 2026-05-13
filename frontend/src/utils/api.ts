@@ -1,9 +1,8 @@
 import axios from 'axios';
 
 export const getApiUrl = (endpoint: string): string => {
-  const baseUrl = import.meta.env.VITE_API_URL || '';
-  const apiPrefix = baseUrl === '' ? '/api' : '';
-  return `${baseUrl}${apiPrefix}${endpoint}`;
+  const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  return `${baseUrl}/api${endpoint}`;
 };
 
 axios.defaults.withCredentials = true;

@@ -72,6 +72,10 @@ class EventMetrics(BaseModel):
     total_net: float
     ticket_types: List[Dict[str, Any]]
     goal_percentage: float
+    attendee_count: int = 0
+    event_name: str | None = None
+    event_start_local: str | None = None  # ISO local time, e.g. "2026-06-07T16:00:00"
+    event_url: str | None = None
 
 class GoalRequest(BaseModel):
     goal: float
@@ -81,6 +85,8 @@ class Order(BaseModel):
     quantity: int
     ticket_type: str
     price: float
+    order_id: str | None = None
+    date: str | None = None
 
 class OrdersResponse(BaseModel):
     orders: List[Order]
@@ -145,26 +151,26 @@ async def set_goal(goal_req: GoalRequest, _: User = Depends(require_admin), db: 
 @app.get("/api/metrics", response_model=EventMetrics)
 async def get_metrics(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
+        event_name: str | None = None
+        event_start_local: str | None = None
+        event_url: str | None = None
         try:
             print("\n=== Starting metrics fetch ===")
             print(f"Using Event ID: {EVENT_ID}")
-            print(f"API Key present: {bool(EVENTBRITE_API_KEY)}")
-            print(f"OAuth Token present: {bool(EVENTBRITE_OAUTH_TOKEN)}")
-            
-            # Calculate sales metrics from ticket classes and orders
-            print("\nCalculating sales metrics...")
             sales_data = await calculate_sales_metrics(EVENT_ID)
-            print(f"Sales data: {sales_data}")
-            
             total_gross = sales_data['total_gross']
             total_net = sales_data['total_net']
             ticket_types = sales_data['ticket_types']
-            
-            print("\nSuccessfully fetched all data from Eventbrite")
-            
+            attendee_count = sales_data['attendee_count']
+
+            event_data = await fetch_eventbrite_event(EVENT_ID)
+            event_name = (event_data.get("name") or {}).get("text")
+            event_start_local = (event_data.get("start") or {}).get("local")
+            event_url = event_data.get("url")
+            cache_event_meta(db, event_name, event_start_local, event_url)
         except Exception as e:
             print(f"\nError fetching Eventbrite data: {str(e)}")
-            print("Falling back to mock data")
+            print("Falling back to mock data + cached event meta")
             event = MOCK_DATA["event"]
             total_gross = float(event["costs"]["gross"]["major_value"])
             total_net = float(event["costs"]["net"]["major_value"])
@@ -183,15 +189,20 @@ async def get_metrics(_: User = Depends(get_current_user), db: Session = Depends
                 }
                 for tc in MOCK_DATA["tickets"]["ticket_classes"]
             ]
-        
+            event_name, event_start_local, event_url = read_event_meta(db)
+            attendee_count = 0
+
         goal = read_goal(db)
         goal_percentage = (total_gross / goal) * 100 if goal > 0 else 0
-        print("\n=== Metrics fetch complete ===")
         return EventMetrics(
             total_gross=total_gross,
             total_net=total_net,
             ticket_types=ticket_types,
-            goal_percentage=goal_percentage
+            goal_percentage=goal_percentage,
+            attendee_count=attendee_count,
+            event_name=event_name,
+            event_start_local=event_start_local,
+            event_url=event_url,
         )
     except Exception as e:
         print(f"\nFatal error in get_metrics: {str(e)}")
@@ -202,23 +213,25 @@ async def get_orders(_: User = Depends(get_current_user)):
     try:
         orders = await fetch_orders(EVENT_ID)
         valid_orders = [order for order in orders if order.get("status") not in ["cancelled", "refunded"]]
-        
-        formatted_orders = []
+
+        formatted_orders: List[Order] = []
         for order in valid_orders:
-            attendees = order.get("attendees", [])
-            for attendee in attendees:
-                ticket_class = attendee.get("ticket_class", {})
-                costs = order.get("costs", {})
-                gross = costs.get("gross", {})
-                
-                formatted_order = Order(
-                    name=attendee.get("profile", {}).get("name", "Unknown"),
-                    quantity=1,  # Each attendee is one ticket
-                    ticket_type=ticket_class.get("name", "Unknown"),
-                    price=float(gross.get("value", 0)) / 100 if gross and gross.get("value") is not None else 0.0
-                )
-                formatted_orders.append(formatted_order)
-        
+            order_id = order.get("id")
+            order_date = order.get("created")
+            for attendee in order.get("attendees", []):
+                if attendee.get("cancelled") or attendee.get("refunded"):
+                    continue
+                attendee_gross = (attendee.get("costs") or {}).get("gross") or {}
+                price = float(attendee_gross.get("value") or 0) / 100
+                formatted_orders.append(Order(
+                    name=(attendee.get("profile") or {}).get("name", "Unknown"),
+                    quantity=1,
+                    ticket_type=attendee.get("ticket_class_name") or "Unknown",
+                    price=price,
+                    order_id=str(order_id) if order_id else None,
+                    date=order_date,
+                ))
+
         return OrdersResponse(orders=formatted_orders)
     except Exception as e:
         print(f"Error fetching orders: {e}")
@@ -252,6 +265,23 @@ def read_goal(db: Session) -> float:
 def write_goal(db: Session, goal: float) -> None:
     db.merge(Setting(key=GOAL_KEY, value=str(goal)))
     db.commit()
+
+
+EVENT_META_KEYS = ("event_name", "event_start_local", "event_url")
+
+
+def cache_event_meta(db: Session, name: str | None, start_local: str | None, url: str | None) -> None:
+    for key, value in zip(EVENT_META_KEYS, (name, start_local, url)):
+        if value:
+            db.merge(Setting(key=key, value=value))
+    db.commit()
+
+
+def read_event_meta(db: Session) -> tuple[str | None, str | None, str | None]:
+    return tuple(  # type: ignore[return-value]
+        (db.get(Setting, key).value if db.get(Setting, key) else None)
+        for key in EVENT_META_KEYS
+    )
 
 # (Optional) Eventbrite API helper (fetch event details and ticket classes) – (using aiohttp for async calls)
 async def fetch_eventbrite_event(event_id: str) -> Dict[Any, Any]:
@@ -375,19 +405,35 @@ async def calculate_sales_metrics(event_id: str) -> Dict[str, float]:
         orders = await fetch_orders(event_id)
         valid_orders = [order for order in orders if order.get("status") not in ["cancelled", "refunded"]]
         
-        # Calculate from orders first as it's the most accurate
+        # Calculate from orders first as it's the most accurate.
+        # Net = gross - eventbrite_fee - payment_fee (matches Eventbrite's "Net sales" total).
+        # Attendees = total GA tickets across all orders + 1 per support-only order
+        # (an order that contains tickets but no General Admission still represents one attendee).
         order_gross = Decimal('0')
         order_fees = Decimal('0')
-        
+        attendee_count = 0
+
         for order in valid_orders:
             costs = order.get("costs", {})
             if costs.get("gross", {}):
-                gross_value = costs["gross"].get("value", 0)
-                order_gross += Decimal(str(gross_value)) / 100
-            
+                order_gross += Decimal(str(costs["gross"].get("value", 0))) / 100
             if costs.get("eventbrite_fee", {}):
-                fee_value = costs["eventbrite_fee"].get("value", 0)
-                order_fees += Decimal(str(fee_value)) / 100
+                order_fees += Decimal(str(costs["eventbrite_fee"].get("value", 0))) / 100
+            if costs.get("payment_fee", {}):
+                order_fees += Decimal(str(costs["payment_fee"].get("value", 0))) / 100
+
+            attendees = [
+                a for a in order.get("attendees", [])
+                if not a.get("cancelled") and not a.get("refunded")
+            ]
+            ga_count = sum(
+                1 for a in attendees
+                if "general admission" in (a.get("ticket_class_name") or "").lower()
+            )
+            if ga_count:
+                attendee_count += ga_count
+            elif attendees:
+                attendee_count += 1
         
         # Calculate from ticket classes as a backup
         total_gross = Decimal('0')
@@ -435,7 +481,8 @@ async def calculate_sales_metrics(event_id: str) -> Dict[str, float]:
         return {
             "total_gross": float(order_gross),
             "total_net": float(order_gross - order_fees),
-            "ticket_types": ticket_types
+            "ticket_types": ticket_types,
+            "attendee_count": attendee_count,
         }
     except Exception as e:
         print(f"Error calculating sales metrics: {e}")

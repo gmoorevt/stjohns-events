@@ -19,6 +19,10 @@ interface Metrics {
   total_net: number;
   ticket_types: TicketType[];
   goal_percentage: number;
+  attendee_count: number;
+  event_name: string | null;
+  event_start_local: string | null;
+  event_url: string | null;
 }
 
 interface Order {
@@ -97,18 +101,18 @@ export default function Dashboard() {
 
   console.log('Current metrics state:', { metrics, isLoading: metricsLoading, error: metricsError });
 
-  // Calculate days until event
-  const eventDate = new Date('2025-06-08');
-  const today = new Date();
-  const daysUntilEvent = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const eventDate = metrics?.event_start_local ? new Date(metrics.event_start_local) : null;
+  const daysUntilEvent = eventDate
+    ? Math.ceil((eventDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+  const eventDateLong = eventDate
+    ? eventDate.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : null;
+  const eventDateShort = eventDate
+    ? eventDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
 
-  // Calculate total attendees (tickets for tracking attendance)
-  const totalAttendees = metrics?.ticket_types.reduce((sum, ticket) => {
-    if (ticket.name.toLowerCase().includes('tracking attendance')) {
-      return sum + ticket.quantity_sold;
-    }
-    return sum;
-  }, 0) || 0;
+  const totalAttendees = metrics?.attendee_count ?? 0;
 
   if (metricsLoading || ordersLoading) {
     return (
@@ -151,18 +155,22 @@ export default function Dashboard() {
             <div className="relative z-10">
               <h2 className="text-3xl font-extrabold text-indigo-800 mb-3 flex items-center gap-2">
                 <svg className="w-8 h-8 text-pink-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3M16 7V3M4 11H20M5 19H19M4 7H20M12 15V19" /></svg>
-                St. John's 2025 Summerfest
+                {metrics?.event_name ?? 'Summerfest'}
               </h2>
-              <div className="flex items-center text-gray-600 mb-4 text-lg">
-                <svg className="w-5 h-5 mr-2 text-indigo-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3M16 7V3M4 11H20M5 19H19M4 7H20M12 15V19" /></svg>
-                Sun, Jun 8, 2025, 4:00 PM
-              </div>
-              <div className="flex items-center mb-2">
-                <a href="https://stjohnsumerfest.eventbrite.com" target="_blank" rel="noopener noreferrer" className="ml-6 text-blue-600 hover:underline flex items-center text-base font-semibold">
-                  View
-                  <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14 3h7m0 0v7m0-7L10 14m-7 7h7a2 2 0 002-2v-7" /></svg>
-                </a>
-              </div>
+              {eventDateLong && (
+                <div className="flex items-center text-gray-600 mb-4 text-lg">
+                  <svg className="w-5 h-5 mr-2 text-indigo-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3M16 7V3M4 11H20M5 19H19M4 7H20M12 15V19" /></svg>
+                  {eventDateLong}
+                </div>
+              )}
+              {metrics?.event_url && (
+                <div className="flex items-center mb-2">
+                  <a href={metrics.event_url} target="_blank" rel="noopener noreferrer" className="ml-6 text-blue-600 hover:underline flex items-center text-base font-semibold">
+                    View
+                    <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14 3h7m0 0v7m0-7L10 14m-7 7h7a2 2 0 002-2v-7" /></svg>
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -211,9 +219,9 @@ export default function Dashboard() {
               <svg className="w-6 h-6 text-yellow-400 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3M16 7V3M4 11H20M5 19H19M4 7H20M12 15V19" /></svg>
               <dt className="text-base font-medium text-gray-500">Days to Event</dt>
             </div>
-            <dd className="text-4xl font-extrabold text-yellow-700 text-center">{daysUntilEvent}</dd>
+            <dd className="text-4xl font-extrabold text-yellow-700 text-center">{daysUntilEvent ?? '—'}</dd>
             <div className="mt-2 text-xs text-gray-500 text-center w-full">
-              Sun, Jun 8, 2025
+              {eventDateShort ?? 'Date not available'}
             </div>
           </div>
 
