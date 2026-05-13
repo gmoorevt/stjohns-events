@@ -47,8 +47,10 @@ RUN npm config set fetch-retry-mintimeout 20000 \
 # Set Node.js memory limit
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Set production environment variables
-ENV VITE_API_URL=/api
+# API URL is provided at build time so Vite can embed it in the bundle.
+# Default to empty (same-origin /api) if no value is passed.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=${VITE_API_URL}
 
 # Install dependencies with specific flags
 COPY package*.json ./
