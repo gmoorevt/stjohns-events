@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
 import { getApiUrl } from '../utils/api';
+import Header from './Header';
 
 export default function Admin() {
   const queryClient = useQueryClient();
@@ -60,7 +61,9 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="flex flex-col items-center pt-10 p-4">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md mb-8">
         <h2 className="text-2xl font-bold mb-4">Admin: Set Goal Amount</h2>
         {isLoading ? (
@@ -105,6 +108,7 @@ export default function Admin() {
         </button>
         {downloadError && <div className="text-red-600 mt-2">{downloadError}</div>}
       </div>
+      </div>
     </div>
   );
-} 
+}

@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from 'react-query';
 import axios, { AxiosError } from 'axios';
 import { getApiUrl } from '../utils/api';
+import Header from './Header';
 
 interface TicketType {
   name: string;
@@ -132,6 +133,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-pink-50 font-sans">
+      <Header />
       <nav className="bg-white shadow-md sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">

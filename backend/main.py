@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException, Request
+from contextlib import asynccontextmanager
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import os
 from dotenv import load_dotenv
@@ -11,10 +13,17 @@ from decimal import Decimal
 # Load environment variables
 load_dotenv()
 
+from db import get_db
+from deps import get_current_user, require_admin
+from models import Setting, User
+from auth_routes import router as auth_router
+from admin_routes import router as admin_router
+from startup import ensure_admin_user
+
 EVENTBRITE_API_KEY = os.getenv("EVENTBRITE_API_KEY")
 EVENTBRITE_OAUTH_TOKEN = os.getenv("EVENTBRITE_OAUTH_TOKEN")
 EVENTBRITE_ORG_ID = os.getenv("EVENTBRITE_ORG_ID")
-EVENT_ID = "1367969235809"
+EVENT_ID = os.getenv("EVENTBRITE_EVENT_ID", "1989097915410")
 
 # Debug CORS configuration
 cors_origins_str = os.getenv("BACKEND_CORS_ORIGINS", "http://localhost:5173")
@@ -22,11 +31,18 @@ cors_origins_str = os.getenv("BACKEND_CORS_ORIGINS", "http://localhost:5173")
 cors_origins = [origin.strip().strip('"\'[]') for origin in cors_origins_str.split(",")]
 print(f"Configuring CORS with origins: {cors_origins}")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    ensure_admin_user()
+    yield
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Summerfest Event Dashboard API",
     description="API for tracking Eventbrite event metrics",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -37,6 +53,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
+app.include_router(admin_router)
 
 # Health check endpoint
 @app.get("/api/health")
@@ -106,11 +125,11 @@ async def root():
     return {"message": "Welcome to Summerfest Event Dashboard API"}
 
 @app.get("/api/goal")
-async def get_goal():
-    return {"goal": read_goal()}
+async def get_goal(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return {"goal": read_goal(db)}
 
 @app.get("/api/eventbrite-raw")
-async def get_eventbrite_raw():
+async def get_eventbrite_raw(_: User = Depends(require_admin)):
     try:
         eventbrite_data = await fetch_eventbrite_event(EVENT_ID)
         return eventbrite_data
@@ -119,12 +138,12 @@ async def get_eventbrite_raw():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/goal")
-async def set_goal(goal_req: GoalRequest):
-    write_goal(goal_req.goal)
+async def set_goal(goal_req: GoalRequest, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    write_goal(db, goal_req.goal)
     return {"goal": goal_req.goal}
 
 @app.get("/api/metrics", response_model=EventMetrics)
-async def get_metrics():
+async def get_metrics(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         try:
             print("\n=== Starting metrics fetch ===")
@@ -165,7 +184,7 @@ async def get_metrics():
                 for tc in MOCK_DATA["tickets"]["ticket_classes"]
             ]
         
-        goal = read_goal()
+        goal = read_goal(db)
         goal_percentage = (total_gross / goal) * 100 if goal > 0 else 0
         print("\n=== Metrics fetch complete ===")
         return EventMetrics(
@@ -179,7 +198,7 @@ async def get_metrics():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/orders", response_model=OrdersResponse)
-async def get_orders():
+async def get_orders(_: User = Depends(get_current_user)):
     try:
         orders = await fetch_orders(EVENT_ID)
         valid_orders = [order for order in orders if order.get("status") not in ["cancelled", "refunded"]]
@@ -205,24 +224,34 @@ async def get_orders():
         print(f"Error fetching orders: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+GOAL_KEY = "goal"
 GOAL_FILE = "goal.txt"
-DEFAULT_GOAL = 100000
+DEFAULT_GOAL = 100000.0
 
-def read_goal():
-    try:
-        if os.path.exists(GOAL_FILE):
+
+def read_goal(db: Session) -> float:
+    row = db.get(Setting, GOAL_KEY)
+    if row is not None:
+        try:
+            return float(row.value)
+        except ValueError:
+            pass
+    # Legacy fallback: migrate from goal.txt if present, then return DEFAULT_GOAL.
+    if os.path.exists(GOAL_FILE):
+        try:
             with open(GOAL_FILE, "r") as f:
-                return float(f.read().strip())
-    except Exception as e:
-        print(f"Error reading goal: {e}")
+                value = float(f.read().strip())
+            db.merge(Setting(key=GOAL_KEY, value=str(value)))
+            db.commit()
+            return value
+        except Exception as e:
+            print(f"Error migrating goal.txt: {e}")
     return DEFAULT_GOAL
 
-def write_goal(goal: float):
-    try:
-        with open(GOAL_FILE, "w") as f:
-            f.write(str(goal))
-    except Exception as e:
-        print(f"Error writing goal: {e}")
+
+def write_goal(db: Session, goal: float) -> None:
+    db.merge(Setting(key=GOAL_KEY, value=str(goal)))
+    db.commit()
 
 # (Optional) Eventbrite API helper (fetch event details and ticket classes) – (using aiohttp for async calls)
 async def fetch_eventbrite_event(event_id: str) -> Dict[Any, Any]:

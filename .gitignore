@@ -51,6 +51,12 @@ logs/ setup.sh
 # Temporary files
 root@*
 
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
 # Keep deployment scripts
 !deploy.sh
 !post-deploy.sh

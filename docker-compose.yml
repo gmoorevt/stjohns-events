@@ -18,6 +18,14 @@ services:
       - EVENTBRITE_PRIVATE_TOKEN=${EVENTBRITE_PRIVATE_TOKEN}
       - EVENTBRITE_PUBLIC_TOKEN=${EVENTBRITE_PUBLIC_TOKEN}
       - EVENTBRITE_OAUTH_TOKEN=${EVENTBRITE_OAUTH_TOKEN}
+      - EVENTBRITE_EVENT_ID=${EVENTBRITE_EVENT_ID}
+      - DATABASE_URL=sqlite:////app/data/summerfest.db
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-geody.moore@gmail.com}
+      - JWT_SECRET=${JWT_SECRET:-dev-only-insecure-secret}
+      - COOKIE_SECURE=false
+      - GMAIL_USER=${GMAIL_USER:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:5173}
       - BACKEND_CORS_ORIGINS=http://localhost:5173,http://frontend:5173
     networks:
       - app-network

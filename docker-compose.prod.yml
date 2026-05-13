@@ -16,6 +16,18 @@ services:
       - EVENTBRITE_CLIENT_SECRET=${EVENTBRITE_CLIENT_SECRET}
       - EVENTBRITE_PRIVATE_TOKEN=${EVENTBRITE_PRIVATE_TOKEN}
       - EVENTBRITE_PUBLIC_TOKEN=${EVENTBRITE_PUBLIC_TOKEN}
+      - EVENTBRITE_OAUTH_TOKEN=${EVENTBRITE_OAUTH_TOKEN}
+      - EVENTBRITE_ORG_ID=${EVENTBRITE_ORG_ID}
+      - EVENTBRITE_EVENT_ID=${EVENTBRITE_EVENT_ID}
+      - DATABASE_URL=sqlite:////app/data/summerfest.db
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_TTL_DAYS=30
+      - COOKIE_SECURE=true
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - APP_BASE_URL=${APP_BASE_URL}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
     restart: unless-stopped
     networks:
       - app-network
@@ -28,7 +40,7 @@ services:
     ports:
       - "3000:80"
     environment:
-      - VITE_API_URL=/api
+      - VITE_API_URL=${VITE_API_URL}
     depends_on:
       - backend
     restart: unless-stopped
@@ -40,4 +52,4 @@ volumes:
 
 networks:
   app-network:
-    driver: bridge 
+    driver: bridge

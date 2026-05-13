@@ -182,6 +182,18 @@ services:
       - EVENTBRITE_CLIENT_SECRET=${EVENTBRITE_CLIENT_SECRET}
       - EVENTBRITE_PRIVATE_TOKEN=${EVENTBRITE_PRIVATE_TOKEN}
       - EVENTBRITE_PUBLIC_TOKEN=${EVENTBRITE_PUBLIC_TOKEN}
+      - EVENTBRITE_OAUTH_TOKEN=${EVENTBRITE_OAUTH_TOKEN}
+      - EVENTBRITE_ORG_ID=${EVENTBRITE_ORG_ID}
+      - EVENTBRITE_EVENT_ID=${EVENTBRITE_EVENT_ID}
+      - DATABASE_URL=sqlite:////app/data/summerfest.db
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_TTL_DAYS=30
+      - COOKIE_SECURE=true
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - APP_BASE_URL=${APP_BASE_URL}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
     restart: unless-stopped
     networks:
       - app-network
@@ -193,6 +205,8 @@ services:
       target: production
     ports:
       - "3000:80"
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
     depends_on:
       - backend
     restart: unless-stopped
@@ -221,12 +235,23 @@ EVENTBRITE_PRIVATE_TOKEN=your_private_token_here
 EVENTBRITE_PUBLIC_TOKEN=your_public_token_here
 EVENTBRITE_OAUTH_TOKEN=your_oauth_token_here
 EVENTBRITE_ORG_ID=your_org_id_here
+EVENTBRITE_EVENT_ID=1989097915410
 
-# Backend Environment Variables
-BACKEND_CORS_ORIGINS=http://localhost:5173,http://frontend:5173,https://${MAIN_DOMAIN}
+# Auth
+ADMIN_EMAIL=geody.moore@gmail.com
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(48))"
+JWT_SECRET=replace_with_random_48_byte_secret
+
+# Gmail SMTP (App Password — requires 2FA on the Google account)
+GMAIL_USER=geody.moore@gmail.com
+GMAIL_APP_PASSWORD=your_gmail_app_password_here
+
+# App URLs / CORS
+APP_BASE_URL=https://${MAIN_DOMAIN}
+BACKEND_CORS_ORIGINS=https://${MAIN_DOMAIN}
 ENVIRONMENT=production
 
-# Frontend Environment Variables
+# Frontend
 VITE_API_URL=https://${API_DOMAIN}
 NODE_ENV=production
 EOL
@@ -350,16 +375,21 @@ main() {
     print_status "Deployment process complete!"
     echo
     echo "Next steps:"
-    echo "1. Configure your DNS records to point to this server:"
-    echo "   - ${MAIN_DOMAIN} -> Your server IP"
-    echo "   - ${API_DOMAIN} -> Your server IP"
-    echo "2. Update the .env files with your actual credentials:"
-    echo "   - /home/summerfest/stjohns-events/.env"
-    echo "   - /home/summerfest/stjohns-events/backend/.env"
-    echo "   - /home/summerfest/stjohns-events/frontend/.env"
-    echo "3. Set up SSL certificates:"
+    echo "1. Configure DNS records to point to this server (206.189.192.35):"
+    echo "   - ${MAIN_DOMAIN} -> 206.189.192.35"
+    echo "   - ${API_DOMAIN} -> 206.189.192.35"
+    echo "2. Generate a Gmail App Password at https://myaccount.google.com/apppasswords"
+    echo "   (requires 2-Step Verification on the Google account)"
+    echo "3. Generate a JWT secret:"
+    echo "   python3 -c 'import secrets; print(secrets.token_urlsafe(48))'"
+    echo "4. Fill in /home/summerfest/stjohns-events/.env from the template, including:"
+    echo "   - ADMIN_EMAIL, JWT_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD, APP_BASE_URL"
+    echo "5. Set up SSL certificates (required for COOKIE_SECURE=true):"
     echo "   sudo apt install -y certbot python3-certbot-nginx"
     echo "   sudo certbot --nginx -d ${MAIN_DOMAIN} -d ${API_DOMAIN}"
+    echo "6. Restart the app: docker-compose -f docker-compose.prod.yml up -d --build"
+    echo "7. First sign-in: visit https://${MAIN_DOMAIN}/login, request a magic link"
+    echo "   to ADMIN_EMAIL, then set a password from the Account page."
     echo
     echo "To check the application status:"
     echo "docker ps"
