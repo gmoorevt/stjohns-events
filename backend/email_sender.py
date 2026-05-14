@@ -1,10 +1,16 @@
+import logging
 import os
-import smtplib
-from email.message import EmailMessage
 
-GMAIL_USER = os.getenv("GMAIL_USER", "")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
+import httpx
+
+POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN", "")
+POSTMARK_FROM_EMAIL = os.getenv("POSTMARK_FROM_EMAIL", "")
+POSTMARK_MESSAGE_STREAM = os.getenv("POSTMARK_MESSAGE_STREAM", "outbound")
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+
+POSTMARK_URL = "https://api.postmarkapp.com/email"
+
+logger = logging.getLogger(__name__)
 
 
 class EmailNotConfigured(Exception):
@@ -12,17 +18,28 @@ class EmailNotConfigured(Exception):
 
 
 def _send(to_email: str, subject: str, body: str) -> None:
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        raise EmailNotConfigured("GMAIL_USER and GMAIL_APP_PASSWORD must be set")
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = GMAIL_USER
-    msg["To"] = to_email
-    msg.set_content(body)
-    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-        smtp.starttls()
-        smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        smtp.send_message(msg)
+    if not POSTMARK_SERVER_TOKEN or not POSTMARK_FROM_EMAIL:
+        raise EmailNotConfigured(
+            "POSTMARK_SERVER_TOKEN and POSTMARK_FROM_EMAIL must be set"
+        )
+    payload = {
+        "From": POSTMARK_FROM_EMAIL,
+        "To": to_email,
+        "Subject": subject,
+        "TextBody": body,
+        "MessageStream": POSTMARK_MESSAGE_STREAM,
+    }
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Postmark-Server-Token": POSTMARK_SERVER_TOKEN,
+    }
+    resp = httpx.post(POSTMARK_URL, json=payload, headers=headers, timeout=15.0)
+    # Postmark returns 200 with ErrorCode=0 on success; 422 with ErrorCode!=0 on failure.
+    if resp.status_code != 200 or resp.json().get("ErrorCode", -1) != 0:
+        logger.error("Postmark send failed: %s %s", resp.status_code, resp.text)
+        resp.raise_for_status()
+        raise RuntimeError(f"Postmark returned non-zero ErrorCode: {resp.text}")
 
 
 def send_magic_link_email(to_email: str, token: str) -> None:

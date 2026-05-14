@@ -134,7 +134,7 @@ def approve_user(
     try:
         send_approval_email(user.email, raw)
     except EmailNotConfigured:
-        logger.error("Gmail SMTP not configured — approval email not sent to %s", user.email)
+        logger.error("Email service not configured — approval email not sent to %s", user.email)
         raise HTTPException(status_code=503, detail="Email service not configured")
     except Exception:
         logger.exception("Failed to send approval email to %s", user.email)

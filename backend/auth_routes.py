@@ -102,7 +102,7 @@ def request_magic_link(payload: MagicLinkRequest, db: Session = Depends(get_db))
             try:
                 send_access_request_email(admin_email.email, email)
             except EmailNotConfigured:
-                logger.error("Gmail SMTP not configured — access request not emailed to admin")
+                logger.error("Email service not configured — access request not emailed to admin")
             except Exception:
                 logger.exception("Failed to send access request email to admin")
     elif user.status == USER_STATUS_APPROVED:
@@ -110,7 +110,7 @@ def request_magic_link(payload: MagicLinkRequest, db: Session = Depends(get_db))
         try:
             send_magic_link_email(user.email, raw)
         except EmailNotConfigured:
-            logger.error("Gmail SMTP not configured — magic link generated but not sent")
+            logger.error("Email service not configured — magic link generated but not sent")
             raise HTTPException(status_code=503, detail="Email service not configured")
         except Exception:
             logger.exception("Failed to send magic link email")

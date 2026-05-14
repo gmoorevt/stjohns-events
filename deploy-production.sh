@@ -113,13 +113,31 @@ setup_application() {
 # Configure Nginx
 setup_nginx() {
     print_status "Setting up Nginx configuration..."
-    
-    # Create Nginx configuration
-    cat > /etc/nginx/sites-available/summerfest << EOL
-# Frontend
+
+    # Ensure the Cloudflare Origin Certificate directory exists.
+    # The cert/key must be placed at /etc/ssl/cloudflare/{origin.pem,origin.key}
+    # before nginx will start successfully on 443.
+    mkdir -p /etc/ssl/cloudflare
+    chmod 700 /etc/ssl/cloudflare
+
+    local HAS_ORIGIN_CERT=0
+    if [ -f /etc/ssl/cloudflare/origin.pem ] && [ -f /etc/ssl/cloudflare/origin.key ]; then
+        HAS_ORIGIN_CERT=1
+        chmod 600 /etc/ssl/cloudflare/origin.key
+    else
+        print_status "Cloudflare Origin Certificate not found at /etc/ssl/cloudflare/origin.{pem,key}."
+        print_status "HTTPS server blocks will be omitted; only HTTP will be served until you install the cert."
+        print_status "Generate one in the Cloudflare dashboard (SSL/TLS -> Origin Server -> Create Certificate),"
+        print_status "then re-run this script (or write the files and 'nginx -s reload')."
+    fi
+
+    # Write the Nginx site config.
+    {
+        cat <<EOL
+# Direct IP access (debugging / health checks) -- HTTP only, no cert.
 server {
-    listen 80;
-    server_name ${MAIN_DOMAIN};
+    listen 80 default_server;
+    server_name _;
 
     location / {
         proxy_pass http://localhost:3000;
@@ -127,14 +145,58 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_cache_bypass \$http_upgrade;
     }
 }
 
-# Backend API
+# Redirect plain HTTP to HTTPS for both hostnames.
 server {
     listen 80;
+    server_name ${MAIN_DOMAIN} ${API_DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+EOL
+
+        if [ "$HAS_ORIGIN_CERT" = "1" ]; then
+            cat <<EOL
+
+# Frontend (HTTPS)
+server {
+    listen 443 ssl http2;
+    server_name ${MAIN_DOMAIN};
+
+    ssl_certificate     /etc/ssl/cloudflare/origin.pem;
+    ssl_certificate_key /etc/ssl/cloudflare/origin.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+
+# Backend API (HTTPS)
+server {
+    listen 443 ssl http2;
     server_name ${API_DOMAIN};
+
+    ssl_certificate     /etc/ssl/cloudflare/origin.pem;
+    ssl_certificate_key /etc/ssl/cloudflare/origin.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
 
     location / {
         proxy_pass http://localhost:8000;
@@ -142,14 +204,24 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_cache_bypass \$http_upgrade;
     }
 }
 EOL
+        fi
+    } > /etc/nginx/sites-available/summerfest
 
     # Enable the site
     ln -sf /etc/nginx/sites-available/summerfest /etc/nginx/sites-enabled/
     rm -f /etc/nginx/sites-enabled/default
+
+    # Open port 443 in the firewall if ufw is active.
+    if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
+        ufw allow https || true
+    fi
 
     # Test Nginx configuration
     print_status "Testing Nginx configuration..."
@@ -158,6 +230,7 @@ EOL
     # Start Nginx
     systemctl start nginx
     systemctl enable nginx
+    systemctl reload nginx || true
 }
 
 # Create docker-compose.prod.yml
@@ -190,8 +263,9 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_TTL_DAYS=30
       - COOKIE_SECURE=true
-      - GMAIL_USER=${GMAIL_USER}
-      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - POSTMARK_SERVER_TOKEN=${POSTMARK_SERVER_TOKEN}
+      - POSTMARK_FROM_EMAIL=${POSTMARK_FROM_EMAIL}
+      - POSTMARK_MESSAGE_STREAM=${POSTMARK_MESSAGE_STREAM:-outbound}
       - APP_BASE_URL=${APP_BASE_URL}
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
     restart: unless-stopped
@@ -242,9 +316,13 @@ ADMIN_EMAIL=geody.moore@gmail.com
 # Generate with: python -c "import secrets; print(secrets.token_urlsafe(48))"
 JWT_SECRET=replace_with_random_48_byte_secret
 
-# Gmail SMTP (App Password — requires 2FA on the Google account)
-GMAIL_USER=geody.moore@gmail.com
-GMAIL_APP_PASSWORD=your_gmail_app_password_here
+# Postmark (HTTPS API — required because DigitalOcean blocks outbound SMTP).
+# Get the Server Token from https://account.postmarkapp.com/servers — under your
+# server, "API Tokens" tab. POSTMARK_FROM_EMAIL must be a verified Sender
+# Signature (or a verified domain) in Postmark.
+POSTMARK_SERVER_TOKEN=your_postmark_server_token_here
+POSTMARK_FROM_EMAIL=no-reply@stjohns-hingham-events.org
+POSTMARK_MESSAGE_STREAM=outbound
 
 # App URLs / CORS
 APP_BASE_URL=https://${MAIN_DOMAIN}
@@ -383,10 +461,19 @@ main() {
     echo "3. Generate a JWT secret:"
     echo "   python3 -c 'import secrets; print(secrets.token_urlsafe(48))'"
     echo "4. Fill in /home/summerfest/stjohns-events/.env from the template, including:"
-    echo "   - ADMIN_EMAIL, JWT_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD, APP_BASE_URL"
-    echo "5. Set up SSL certificates (required for COOKIE_SECURE=true):"
-    echo "   sudo apt install -y certbot python3-certbot-nginx"
-    echo "   sudo certbot --nginx -d ${MAIN_DOMAIN} -d ${API_DOMAIN}"
+    echo "   - ADMIN_EMAIL, JWT_SECRET, POSTMARK_SERVER_TOKEN, POSTMARK_FROM_EMAIL, APP_BASE_URL"
+    echo "5. Install a Cloudflare Origin Certificate (required for COOKIE_SECURE=true"
+    echo "   and Cloudflare SSL mode 'Full (strict)'):"
+    echo "   a. In the Cloudflare dashboard for stjohns-hingham-events.org:"
+    echo "        SSL/TLS -> Origin Server -> Create Certificate"
+    echo "      Include hostnames: ${MAIN_DOMAIN}, *.${MAIN_DOMAIN} (or ${API_DOMAIN})."
+    echo "      Pick RSA, 15 years, format PEM."
+    echo "   b. On this server, paste the certificate and private key to:"
+    echo "        /etc/ssl/cloudflare/origin.pem"
+    echo "        /etc/ssl/cloudflare/origin.key   (chmod 600)"
+    echo "   c. Re-run setup_nginx (or 'sudo bash $0' to refresh the config),"
+    echo "      then 'sudo nginx -t && sudo systemctl reload nginx'."
+    echo "   d. In Cloudflare, set SSL/TLS -> Overview -> Encryption mode to 'Full (strict)'."
     echo "6. Restart the app: docker-compose -f docker-compose.prod.yml up -d --build"
     echo "7. First sign-in: visit https://${MAIN_DOMAIN}/login, request a magic link"
     echo "   to ADMIN_EMAIL, then set a password from the Account page."

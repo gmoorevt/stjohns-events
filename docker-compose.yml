@@ -23,8 +23,9 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL:-geody.moore@gmail.com}
       - JWT_SECRET=${JWT_SECRET:-dev-only-insecure-secret}
       - COOKIE_SECURE=false
-      - GMAIL_USER=${GMAIL_USER:-}
-      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
+      - POSTMARK_SERVER_TOKEN=${POSTMARK_SERVER_TOKEN:-}
+      - POSTMARK_FROM_EMAIL=${POSTMARK_FROM_EMAIL:-}
+      - POSTMARK_MESSAGE_STREAM=${POSTMARK_MESSAGE_STREAM:-outbound}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:5173}
       - BACKEND_CORS_ORIGINS=http://localhost:5173,http://frontend:5173
     networks:
