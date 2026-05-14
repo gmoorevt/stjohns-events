@@ -4,10 +4,13 @@ import { getApiUrl } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import Header from './Header';
 
+type UserStatus = 'pending' | 'approved' | 'rejected';
+
 interface ManagedUser {
   id: number;
   email: string;
   role: 'admin' | 'user';
+  status: UserStatus;
   has_password: boolean;
   created_at: string;
 }
@@ -72,6 +75,28 @@ export default function AdminUsers() {
     }
   };
 
+  const approve = async (id: number) => {
+    try {
+      await axios.post(getApiUrl(`/admin/users/${id}/approve`));
+      await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Failed to approve user');
+    }
+  };
+
+  const reject = async (id: number, email: string) => {
+    if (!window.confirm(`Reject access for ${email}? They won't be able to request access again unless you delete the rejection.`)) return;
+    try {
+      await axios.post(getApiUrl(`/admin/users/${id}/reject`));
+      await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Failed to reject user');
+    }
+  };
+
+  const pendingUsers = users.filter((u) => u.status === 'pending');
+  const decidedUsers = users.filter((u) => u.status !== 'pending');
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -115,24 +140,62 @@ export default function AdminUsers() {
 
         {error && <div className="bg-red-50 text-red-700 px-4 py-2 rounded mb-4">{error}</div>}
 
+        {pendingUsers.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded shadow-sm overflow-hidden mb-6">
+            <div className="px-4 py-3 border-b border-amber-200 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-amber-900">Pending requests</h2>
+              <span className="bg-amber-200 text-amber-900 text-xs font-medium px-2 py-0.5 rounded-full">{pendingUsers.length}</span>
+            </div>
+            <ul className="divide-y divide-amber-200">
+              {pendingUsers.map((u) => (
+                <li key={u.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{u.email}</div>
+                    <div className="text-xs text-gray-500">Requested {new Date(u.created_at).toLocaleString()}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => approve(u.id)}
+                      className="bg-emerald-600 text-white text-sm rounded px-3 py-1.5 font-medium hover:bg-emerald-700"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => reject(u.id, u.email)}
+                      className="bg-white border border-gray-300 text-gray-700 text-sm rounded px-3 py-1.5 font-medium hover:bg-gray-50"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="bg-white rounded shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Role</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Password set</th>
                 <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
-              ) : users.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500">No users yet.</td></tr>
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
+              ) : decidedUsers.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">No approved users yet.</td></tr>
               ) : (
-                users.map((u) => {
+                decidedUsers.map((u) => {
                   const isSelf = u.id === currentUser?.id;
+                  const statusBadge =
+                    u.status === 'approved'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-gray-100 text-gray-700';
                   return (
                     <tr key={u.id}>
                       <td className="px-4 py-3 text-sm text-gray-900">{u.email}{isSelf && <span className="text-xs text-gray-400 ml-1">(you)</span>}</td>
@@ -146,6 +209,19 @@ export default function AdminUsers() {
                           <option value="user">User</option>
                           <option value="admin">Admin</option>
                         </select>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded ${statusBadge}`}>
+                          {u.status}
+                        </span>
+                        {u.status === 'rejected' && !isSelf && (
+                          <button
+                            onClick={() => approve(u.id)}
+                            className="ml-2 text-xs text-indigo-700 hover:underline"
+                          >
+                            Approve anyway
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">{u.has_password ? 'yes' : 'no'}</td>
                       <td className="px-4 py-3 text-right">

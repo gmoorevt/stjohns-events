@@ -70,9 +70,14 @@ export default function Login() {
 
         {tab === 'magic' ? (
           magicSent ? (
-            <div className="text-center py-6">
-              <p className="text-gray-700">If an account exists for <span className="font-semibold">{email}</span>, a sign-in link is on its way.</p>
-              <p className="text-xs text-gray-500 mt-2">The link expires in 15 minutes.</p>
+            <div className="text-center py-6 space-y-3">
+              <p className="text-gray-700">Thanks — we've recorded your request for <span className="font-semibold">{email}</span>.</p>
+              <p className="text-sm text-gray-600">
+                If you already have access, a sign-in link is on its way (expires in 15 minutes).
+              </p>
+              <p className="text-sm text-gray-600">
+                If this is your first time, an admin will review your request and email you a sign-in link shortly.
+              </p>
             </div>
           ) : (
             <form onSubmit={handleMagicSubmit} className="space-y-4">

@@ -4,6 +4,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db import Base
 
 
+USER_STATUS_PENDING = "pending"
+USER_STATUS_APPROVED = "approved"
+USER_STATUS_REJECTED = "rejected"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -11,6 +16,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default=USER_STATUS_PENDING)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     magic_links: Mapped[list["MagicLink"]] = relationship(back_populates="user", cascade="all, delete-orphan")

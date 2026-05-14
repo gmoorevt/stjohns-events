@@ -2,7 +2,7 @@ from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from db import get_db
-from models import User
+from models import USER_STATUS_APPROVED, User
 from security import COOKIE_NAME, decode_session_token
 
 
@@ -18,6 +18,8 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if user.status != USER_STATUS_APPROVED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not approved")
     return user
 
 
