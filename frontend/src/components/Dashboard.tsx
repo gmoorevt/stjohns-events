@@ -10,8 +10,10 @@ interface TicketType {
   quantity_total: number;
   quantity_available: number;
   cost: number;
+  gross_revenue: number;
   status: string;
   on_sale_status: string;
+  is_donation?: boolean;
 }
 
 interface Metrics {
@@ -268,9 +270,13 @@ export default function Dashboard() {
                     <tr key={ticket.name} className="hover:bg-indigo-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-gray-900">{ticket.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500">{ticket.quantity_sold}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500">${ticket.cost.toLocaleString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500">
-                        ${(ticket.quantity_sold * ticket.cost).toLocaleString()}
+                        {ticket.is_donation
+                          ? (ticket.quantity_sold ? `$${ticket.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} avg` : 'Variable')
+                          : `$${ticket.cost.toLocaleString()}`}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500">
+                        ${ticket.gross_revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}

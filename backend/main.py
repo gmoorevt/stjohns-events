@@ -412,6 +412,11 @@ async def calculate_sales_metrics(event_id: str) -> Dict[str, float]:
         order_gross = Decimal('0')
         order_fees = Decimal('0')
         attendee_count = 0
+        # Per-attendee gross/fee totals keyed by ticket_class_id — used to value
+        # variable-price ticket types (donations) where the ticket class itself
+        # has no fixed cost.
+        per_class_gross: Dict[str, Decimal] = {}
+        per_class_fee: Dict[str, Decimal] = {}
 
         for order in valid_orders:
             costs = order.get("costs", {})
@@ -434,6 +439,17 @@ async def calculate_sales_metrics(event_id: str) -> Dict[str, float]:
                 attendee_count += ga_count
             elif attendees:
                 attendee_count += 1
+
+            for a in attendees:
+                tc_id = a.get("ticket_class_id")
+                if not tc_id:
+                    continue
+                a_costs = a.get("costs") or {}
+                a_gross = (a_costs.get("gross") or {}).get("value", 0) or 0
+                a_eb_fee = (a_costs.get("eventbrite_fee") or {}).get("value", 0) or 0
+                a_pay_fee = (a_costs.get("payment_fee") or {}).get("value", 0) or 0
+                per_class_gross[tc_id] = per_class_gross.get(tc_id, Decimal('0')) + Decimal(str(a_gross)) / 100
+                per_class_fee[tc_id] = per_class_fee.get(tc_id, Decimal('0')) + (Decimal(str(a_eb_fee)) + Decimal(str(a_pay_fee))) / 100
         
         # Calculate from ticket classes as a backup
         total_gross = Decimal('0')
@@ -443,36 +459,43 @@ async def calculate_sales_metrics(event_id: str) -> Dict[str, float]:
         for tc in ticket_classes:
             quantity_sold = tc.get("quantity_sold", 0)
             is_donation = tc.get("donation", False)
-            
-            # For donations, use actual_cost if available, otherwise use cost
+            tc_id = tc.get("id")
+
+            cost = tc.get("cost") or {}
+            fee = tc.get("fee") or {}
+            ticket_price = Decimal(str(cost.get("value", 0))) / 100 if cost.get("value") is not None else Decimal('0')
+            ticket_fee = Decimal(str(fee.get("value", 0))) / 100 if fee.get("value") is not None else Decimal('0')
+
             if is_donation:
-                cost = tc.get("actual_cost", tc.get("cost", {}))
-                fee = tc.get("actual_fee", tc.get("fee", {}))
+                # Donations have variable per-attendee amounts, so sum what was
+                # actually paid rather than multiplying a fixed price.
+                gross_revenue = per_class_gross.get(tc_id, Decimal('0'))
+                tc_fee_total = per_class_fee.get(tc_id, Decimal('0'))
+                net_revenue = gross_revenue - tc_fee_total
+                avg_price = (gross_revenue / quantity_sold) if quantity_sold else Decimal('0')
+                display_cost = float(avg_price)
+                display_fee = float(tc_fee_total / quantity_sold) if quantity_sold else 0.0
             else:
-                cost = tc.get("cost", {})
-                fee = tc.get("fee", {})
-            
-            # Calculate revenue for this ticket type
-            ticket_price = Decimal(str(cost.get("value", 0))) / 100 if cost and cost.get("value") is not None else Decimal('0')
-            ticket_fee = Decimal(str(fee.get("value", 0))) / 100 if fee and fee.get("value") is not None else Decimal('0')
-            
-            gross_revenue = ticket_price * quantity_sold
-            net_revenue = (ticket_price - ticket_fee) * quantity_sold
-            
+                gross_revenue = ticket_price * quantity_sold
+                net_revenue = (ticket_price - ticket_fee) * quantity_sold
+                display_cost = float(ticket_price)
+                display_fee = float(ticket_fee)
+
             total_gross += gross_revenue
             total_net += net_revenue
-            
+
             ticket_info = {
                 "name": tc.get("name", ""),
                 "quantity_sold": quantity_sold,
                 "quantity_total": tc.get("quantity_total", 0),
                 "quantity_available": tc.get("quantity_available", 0),
-                "cost": float(ticket_price),
-                "fee": float(ticket_fee),
+                "cost": display_cost,
+                "fee": display_fee,
                 "gross_revenue": float(gross_revenue),
                 "net_revenue": float(net_revenue),
                 "status": tc.get("status", ""),
-                "on_sale_status": tc.get("on_sale_status", "")
+                "on_sale_status": tc.get("on_sale_status", ""),
+                "is_donation": is_donation,
             }
             ticket_types.append(ticket_info)
         
