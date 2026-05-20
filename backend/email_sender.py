@@ -7,6 +7,7 @@ POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN", "")
 POSTMARK_FROM_EMAIL = os.getenv("POSTMARK_FROM_EMAIL", "")
 POSTMARK_MESSAGE_STREAM = os.getenv("POSTMARK_MESSAGE_STREAM", "outbound")
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
 
 POSTMARK_URL = "https://api.postmarkapp.com/email"
 
@@ -19,6 +20,13 @@ class EmailNotConfigured(Exception):
 
 def _send(to_email: str, subject: str, body: str) -> None:
     if not POSTMARK_SERVER_TOKEN or not POSTMARK_FROM_EMAIL:
+        if ENVIRONMENT == "development":
+            logger.warning(
+                "[dev] Postmark not configured — logging email instead of sending.\n"
+                "  To: %s\n  Subject: %s\n  Body:\n%s",
+                to_email, subject, body,
+            )
+            return
         raise EmailNotConfigured(
             "POSTMARK_SERVER_TOKEN and POSTMARK_FROM_EMAIL must be set"
         )
