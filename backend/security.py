@@ -1,6 +1,7 @@
 import hashlib
 import os
 import secrets
+import string
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
@@ -52,3 +53,11 @@ def generate_magic_link_token() -> tuple[str, str]:
 
 def hash_magic_token(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+_TEMP_PASSWORD_ALPHABET = string.ascii_letters + string.digits
+TEMP_PASSWORD_LENGTH = 12
+
+
+def generate_temp_password() -> str:
+    return "".join(secrets.choice(_TEMP_PASSWORD_ALPHABET) for _ in range(TEMP_PASSWORD_LENGTH))

@@ -16,7 +16,12 @@ from models import (
     MagicLink,
     User,
 )
-from security import MAGIC_LINK_TTL_MINUTES, generate_magic_link_token, hash_password
+from security import (
+    MAGIC_LINK_TTL_MINUTES,
+    generate_magic_link_token,
+    generate_temp_password,
+    hash_password,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +162,39 @@ def reject_user(
     db.commit()
     db.refresh(user)
     return _to_out(user)
+
+
+class SetPasswordRequest(BaseModel):
+    password: str | None = None
+
+
+class SetPasswordResponse(BaseModel):
+    user: UserOut
+    password: str
+
+
+@router.post("/users/{user_id}/set-password")
+def admin_set_password(
+    user_id: int,
+    payload: SetPasswordRequest,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> SetPasswordResponse:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if payload.password is not None and len(payload.password) > 0:
+        if len(payload.password) < 8:
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        password = payload.password
+    else:
+        password = generate_temp_password()
+    user.password_hash = hash_password(password)
+    if user.status != USER_STATUS_APPROVED:
+        user.status = USER_STATUS_APPROVED
+    db.commit()
+    db.refresh(user)
+    return SetPasswordResponse(user=_to_out(user), password=password)
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
